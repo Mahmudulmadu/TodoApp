@@ -1,0 +1,248 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 To-Do App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-top: 40px;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 70%;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-right: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px 14px;
+            font-size: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 2px;
+            transition: 0.2s;
+        }
+
+            button:hover {
+                opacity: 0.85;
+            }
+
+        .add-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .edit-btn {
+            background-color: #ffc107;
+            color: white;
+        }
+
+        .complete-btn {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            background-color: #f8f9fa;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+            li.completed span {
+                text-decoration: line-through;
+                color: #6c757d;
+            }
+
+        .todo-text {
+            flex-grow: 1;
+        }
+
+        .single-todo {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        @media (max-width: 500px) {
+            input[type="text"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            button {
+                width: 48%;
+                margin-bottom: 8px;
+            }
+
+            li {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📝 My Stylish To-Do List</h1>
+
+    <div class="container">
+        <input id="todoInput" placeholder="Enter new task" />
+        <button class="add-btn" onclick="addTodo()">Add</button>
+        <br><br>
+
+        <input id="idInput" placeholder="Enter ID to retrieve" />
+        <button class="complete-btn" onclick="getTodoById()">Get By ID</button>
+
+        <ul id="todoList"></ul>
+        <div id="singleTodo" class="single-todo"></div>
+    </div>
+
+    <script>
+        const apiUrl = '/api/todo';
+
+        async function loadTodos() {
+            const res = await fetch(apiUrl);
+            const todos = await res.json();
+            const list = document.getElementById('todoList');
+            list.innerHTML = '';
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = todo.isCompleted ? 'completed' : '';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'todo-text';
+                titleSpan.textContent = `ID: ${todo.id} | ${todo.title} | Completed: ${todo.isCompleted} `;
+                li.appendChild(titleSpan);
+
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.value = todo.title;
+                editInput.style.display = 'none';
+                li.appendChild(editInput);
+
+                const updateBtn = document.createElement('button');
+                updateBtn.className = 'edit-btn';
+                updateBtn.textContent = 'Edit';
+                updateBtn.onclick = () => {
+                    if (editInput.style.display === 'none') {
+                        editInput.style.display = 'inline';
+                        updateBtn.textContent = 'Save';
+                        titleSpan.style.display = 'none';
+                    } else {
+                        updateTodo(todo.id, editInput.value, todo.isCompleted);
+                        editInput.style.display = 'none';
+                        updateBtn.textContent = 'Edit';
+                        titleSpan.style.display = 'inline';
+                    }
+                };
+                li.appendChild(updateBtn);
+
+                const completeBtn = document.createElement('button');
+                completeBtn.className = 'complete-btn';
+                completeBtn.textContent = todo.isCompleted ? 'Undo' : 'Complete';
+                completeBtn.onclick = () => updateTodo(todo.id, todo.title, !todo.isCompleted);
+                li.appendChild(completeBtn);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteTodo(todo.id);
+                li.appendChild(deleteBtn);
+
+                list.appendChild(li);
+            });
+        }
+
+        async function addTodo() {
+            const title = document.getElementById('todoInput').value.trim();
+            if (!title) return alert('Enter a task!');
+            await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, isCompleted: false })
+            });
+            document.getElementById('todoInput').value = '';
+            loadTodos();
+        }
+
+        async function updateTodo(id, title, isCompleted) {
+            await fetch(`${apiUrl}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, isCompleted })
+            });
+            loadTodos();
+        }
+
+        async function deleteTodo(id) {
+            await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+            loadTodos();
+        }
+
+        // Get To-Do by ID without removing the list
+        async function getTodoById() {
+            const id = document.getElementById('idInput').value.trim();
+            if (!id) return alert('Enter ID!');
+            const res = await fetch(`${apiUrl}/${id}`);
+            const div = document.getElementById('singleTodo');
+            if (res.status === 404) {
+                div.textContent = 'To-Do not found';
+                div.style.color = 'red';
+                return;
+            }
+            const todo = await res.json();
+            div.innerHTML = ` You find this To-Do: ID: ${todo.id} | ${todo.title} | Completed: ${todo.isCompleted}`;
+            div.style.color = '#17a2b8';
+        }
+
+
+        loadTodos();
+    </script>
+
+</body>
+</html>
